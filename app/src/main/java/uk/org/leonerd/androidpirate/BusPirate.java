@@ -53,6 +53,85 @@ public class BusPirate {
         mLoop.stop();
     }
 
+    public void setPower(boolean on) throws InterruptedException, BusPirateException {
+        write((byte)(0x40 | (on ? 0x08 : 0)));
+        readExpectingAck();
+    }
+
+    public void enterI2CMode() throws InterruptedException {
+        write((byte) 0x02);
+        readExactly(4);
+    }
+
+    protected void i2cStartBit() throws InterruptedException, BusPirateException {
+        write((byte) 0x02);
+        readExpectingAck();
+    }
+
+    protected void i2cStopBit() throws InterruptedException, BusPirateException {
+        write((byte) 0x03);
+        readExpectingAck();
+    }
+
+    protected void i2cWrite(byte[] src) throws InterruptedException, BusPirateException {
+        int pos = 0;
+        while (pos < src.length) {
+            int chunkLen = 16;
+            if (src.length - pos < chunkLen)
+                chunkLen = src.length - pos;
+
+            write((byte) (0x10 + chunkLen - 1));
+            readExpectingAck();
+
+            int chunkEnd = pos + chunkLen;
+            for (; pos < chunkEnd; pos++) {
+                write(src[pos]);
+                readExpecting(1, new byte[]{0x00});
+            }
+        }
+    }
+
+    protected byte[] i2cRead(int len) throws InterruptedException, BusPirateException {
+        byte[] ret = new byte[len];
+
+        for (int pos = 0; pos < len; pos++) {
+            write((byte) 0x04);
+            byte[] b = readExactly(1);
+            ret[pos] = b[0];
+            if (pos < len - 1)
+                write((byte) 0x06); // ACK
+            else
+                write((byte) 0x07); // NACK
+        }
+
+        return ret;
+    }
+
+    public synchronized void i2cSend(int addr, byte[] src) throws InterruptedException,
+            BusPirateException {
+        i2cStartBit();
+        i2cWrite(new byte[]{(byte)(addr << 1 | 0)});
+        i2cWrite(src);
+        i2cStopBit();
+    }
+
+    public synchronized byte[] i2cSendThenRecv(int addr, byte[] src, int recvLen) throws
+            InterruptedException, BusPirateException {
+        i2cStartBit();
+        i2cWrite(new byte[]{(byte)(addr << 1 | 0)});
+        i2cWrite(src);
+        i2cStartBit();
+        i2cWrite(new byte[]{(byte)(addr << 1 | 1)});
+        byte[] ret = i2cRead(recvLen);
+        i2cStopBit();
+
+        return ret;
+    }
+
+    protected void write(byte b) {
+        write(new byte[]{b});
+    }
+
     protected void write(byte[] src) {
         synchronized (mWriteBuf) {
             mWriteBuf.put(src);
@@ -71,16 +150,29 @@ public class BusPirate {
             mReadBuf.flip();
             mReadBuf.get(dest, 0, len);
 
-            if(mReadBuf.limit() > mReadBuf.position()) {
+            if (mReadBuf.limit() > mReadBuf.position()) {
                 Log.d("MYTAG", "TODO: Need to preserve the last bits of data limit=" + mReadBuf.limit() + " pos=" + mReadBuf.position());
                 mReadBuf.compact();
-            }
-            else {
+            } else {
                 mReadBuf.clear();
             }
         }
 
         return dest;
+    }
+
+    protected void readExpecting(int len, byte[] expectation) throws InterruptedException,
+            BusPirateException {
+        byte[] ret = readExactly(len);
+
+        for (int i = 0; i < len; i++) {
+            if (ret[i] != expectation[i])
+                throw new BusPirateException("Expected " + expectation[i] + " got " + ret[i]);
+        }
+    }
+
+    protected void readExpectingAck() throws InterruptedException, BusPirateException {
+        readExpecting(1, new byte[]{0x01});
     }
 
     private class BusPirateIOLoop implements Runnable {
@@ -95,6 +187,7 @@ public class BusPirate {
                 try {
                     tick();
                 } catch (IOException e) {
+                    break;
                 }
             }
         }
@@ -125,6 +218,12 @@ public class BusPirate {
                     mReadBuf.notify();
                 }
             }
+        }
+    }
+
+    public class BusPirateException extends Exception {
+        public BusPirateException(String msg) {
+            super(msg);
         }
     }
 }

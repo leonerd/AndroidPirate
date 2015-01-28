@@ -18,6 +18,8 @@ import java.util.List;
 
 public class MainActivity extends ActionBarActivity {
 
+    private static final int MPL311A5_ADDR = 0x60;
+
     TextView txtStatus;
     BusPirate mPirate;
 
@@ -42,6 +44,30 @@ public class MainActivity extends ActionBarActivity {
         }
 
         txtStatus.setText("Pirate ready");
+
+        try {
+            mPirate.enterI2CMode();
+            txtStatus.setText("Pirate I2C ready");
+        }
+        catch (Exception e) {
+            txtStatus.setText("Pirate failed: " + e);
+        }
+
+        try {
+            mPirate.setPower(true);
+        }
+        catch (Exception e) {
+            txtStatus.setText("Power failed: " + e);
+        }
+
+        try {
+            // CTRL_REG1 = ACTIVE
+            mPirate.i2cSend(MPL311A5_ADDR, new byte[]{0x26, 0x01});
+            txtStatus.setText("MPL311A5 ready");
+        }
+        catch (Exception e) {
+            txtStatus.setText("MPL311A5 failed: " + e);
+        }
     }
 
     @Override
