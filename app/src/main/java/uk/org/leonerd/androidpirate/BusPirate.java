@@ -6,6 +6,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -102,6 +103,7 @@ public class BusPirate {
                 write((byte) 0x06); // ACK
             else
                 write((byte) 0x07); // NACK
+            readExpectingAck();
         }
 
         return ret;
@@ -109,6 +111,7 @@ public class BusPirate {
 
     public synchronized void i2cSend(int addr, byte[] src) throws InterruptedException,
             BusPirateException {
+        Log.d("BUSPIRATE", "I2C SEND to " + addr + ": " + Arrays.toString(src));
         i2cStartBit();
         i2cWrite(new byte[]{(byte)(addr << 1 | 0)});
         i2cWrite(src);
@@ -117,6 +120,7 @@ public class BusPirate {
 
     public synchronized byte[] i2cSendThenRecv(int addr, byte[] src, int recvLen) throws
             InterruptedException, BusPirateException {
+        Log.d("BUSPIRATE", "I2C SEND-then-RECV to " + addr + ": " + Arrays.toString(src));
         i2cStartBit();
         i2cWrite(new byte[]{(byte)(addr << 1 | 0)});
         i2cWrite(src);
@@ -125,6 +129,7 @@ public class BusPirate {
         byte[] ret = i2cRead(recvLen);
         i2cStopBit();
 
+        Log.d("BUSPIRATE", "  RECVed: " + Arrays.toString(ret));
         return ret;
     }
 
@@ -145,13 +150,10 @@ public class BusPirate {
             while (mReadBuf.position() < len)
                 mReadBuf.wait();
 
-            Log.d("MYTAG", "readExactly can get up to " + mReadBuf.position() + " bytes");
-
             mReadBuf.flip();
             mReadBuf.get(dest, 0, len);
 
             if (mReadBuf.limit() > mReadBuf.position()) {
-                Log.d("MYTAG", "TODO: Need to preserve the last bits of data limit=" + mReadBuf.limit() + " pos=" + mReadBuf.position());
                 mReadBuf.compact();
             } else {
                 mReadBuf.clear();
