@@ -21,16 +21,39 @@
         android:id="@+id/btnRead"
         android:layout_centerVertical="true"
         android:layout_alignLeft="@+id/txtStatus"
-        android:layout_alignStart="@+id/txtStatus" />
+        android:layout_alignStart="@+id/txtStatus"
+        android:onClick="readSensor" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="Status"
+        android:text="[Status]"
         android:id="@+id/txtStatus"
         android:layout_below="@+id/title"
         android:layout_marginTop="28dp"
         android:layout_alignLeft="@+id/title"
         android:layout_alignStart="@+id/title" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="[Pressure]"
+        android:id="@+id/txtPressure"
+        android:layout_below="@+id/btnRead"
+        android:layout_alignLeft="@+id/btnRead"
+        android:layout_alignStart="@+id/btnRead"
+        android:layout_marginTop="51dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="[Temperature]"
+        android:id="@+id/txtTemperature"
+        android:layout_below="@+id/txtPressure"
+        android:layout_alignLeft="@+id/txtPressure"
+        android:layout_alignStart="@+id/txtPressure"
+        android:layout_marginTop="25dp" />
 </RelativeLayout>

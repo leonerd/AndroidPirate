@@ -5,8 +5,10 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.TextView;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
@@ -51,6 +53,7 @@ public class MainActivity extends ActionBarActivity {
         }
         catch (Exception e) {
             txtStatus.setText("Pirate failed: " + e);
+            return;
         }
 
         try {
@@ -58,6 +61,7 @@ public class MainActivity extends ActionBarActivity {
         }
         catch (Exception e) {
             txtStatus.setText("Power failed: " + e);
+            return;
         }
 
         try {
@@ -67,6 +71,7 @@ public class MainActivity extends ActionBarActivity {
         }
         catch (Exception e) {
             txtStatus.setText("MPL311A5 failed: " + e);
+            return;
         }
     }
 
@@ -78,6 +83,26 @@ public class MainActivity extends ActionBarActivity {
         }
 
         super.onStop();
+    }
+
+    public void readSensor(View view) {
+        byte[] rawData;
+        try {
+            rawData = mPirate.i2cSendThenRecv(MPL311A5_ADDR, new byte[]{0x01}, 5);
+        }
+        catch (Exception e) {
+            txtStatus.setText("Read failed: " + e);
+            return;
+        }
+
+        /* TODO(paul): This is all wrong; because of Java's signed byte handling. But I have
+         *   no idea currently how to fix it. Meh.
+         */
+        double pressure = ((rawData[0] << 16) | (rawData[1] << 8) | rawData[2]) / 64.0;
+        double temperature = ((rawData[3] << 8) | rawData[4]) / 256.0;
+
+        ((TextView)findViewById(R.id.txtPressure)).setText(String.format("%.2f Pa", pressure));
+        ((TextView)findViewById(R.id.txtTemperature)).setText(String.format("%.3f C", temperature));
     }
 
     private BusPirate findBusPirate() {
