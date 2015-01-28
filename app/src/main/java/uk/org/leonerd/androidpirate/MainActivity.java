@@ -19,7 +19,7 @@ import java.util.List;
 public class MainActivity extends ActionBarActivity {
 
     TextView txtStatus;
-    UsbSerialPort mPort;
+    BusPirate mPirate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,14 +27,34 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         txtStatus = (TextView) findViewById(R.id.txtStatus);
-        txtStatus.setText("Starting");
-
-        mPort = findBusPirate();
-        if (mPort == null)
-            return;
     }
 
-    private UsbSerialPort findBusPirate(void) {
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        txtStatus.setText("Starting");
+
+        mPirate = findBusPirate();
+        if (mPirate == null) {
+            txtStatus.setText("No pirate");
+            return;
+        }
+
+        txtStatus.setText("Pirate ready");
+    }
+
+    @Override
+    protected void onStop() {
+        if (mPirate != null) {
+            mPirate.stop();
+            mPirate = null;
+        }
+
+        super.onStop();
+    }
+
+    private BusPirate findBusPirate() {
         UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
         List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber()
                 .findAllDrivers(manager);
@@ -60,25 +80,8 @@ public class MainActivity extends ActionBarActivity {
 
         try {
             txtStatus.setText("Initialising Pirate...");
-            byte buffer[] = new byte[20];
+            return new BusPirate(port);
 
-            // Start up the BusPirate into binary mode by writing twenty NULs to it
-            port.write(buffer, 100);
-
-            int len = port.read(buffer, 100);
-            if(len < 4) {
-                txtStatus.setText("Fewer than 4 bytes");
-                return null;
-            }
-
-            if(buffer[0] == 'B' && buffer[1] == 'B' &&
-                    buffer[2] == 'I' && buffer[3] == 'O') {
-                txtStatus.setText("Recognised :)");
-                return port;
-            }
-            else {
-                txtStatus.setText("Not sure...");
-            }
         }
         catch (Exception e) {
             txtStatus.setText("Didn't like it: " + e);
