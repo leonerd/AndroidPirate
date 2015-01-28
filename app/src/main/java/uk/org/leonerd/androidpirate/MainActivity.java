@@ -85,6 +85,13 @@ public class MainActivity extends ActionBarActivity {
         super.onStop();
     }
 
+    private static int intFromByte(byte b) {
+        if(b < 0)
+            return 256 + b;
+        else
+            return b;
+    }
+
     public void readSensor(View view) {
         byte[] rawData;
         try {
@@ -95,11 +102,13 @@ public class MainActivity extends ActionBarActivity {
             return;
         }
 
-        /* TODO(paul): This is all wrong; because of Java's signed byte handling. But I have
-         *   no idea currently how to fix it. Meh.
-         */
-        double pressure = ((rawData[0] << 16) | (rawData[1] << 8) | rawData[2]) / 64.0;
-        double temperature = ((rawData[3] << 8) | rawData[4]) / 256.0;
+        double pressure =
+                ((intFromByte(rawData[0]) << 16) |
+                 (intFromByte(rawData[1]) <<  8) |
+                  intFromByte(rawData[2])        ) / 64.0;
+        double temperature =
+                rawData[3] +
+                intFromByte(rawData[4]) / 256.0;
 
         ((TextView)findViewById(R.id.txtPressure)).setText(String.format("%.2f Pa", pressure));
         ((TextView)findViewById(R.id.txtTemperature)).setText(String.format("%.3f C", temperature));
