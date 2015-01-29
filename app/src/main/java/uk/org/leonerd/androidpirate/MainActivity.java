@@ -98,31 +98,31 @@ public class MainActivity extends ActionBarActivity {
         mMatrixSession = null;
 
         new LoginRestClient(HS_URI).loginWithPassword(user, password,
-            new ApiCallback<Credentials>() {
-                @Override
-                public void onSuccess(Credentials credentials) {
-                    mMatrixSession = new MXSession(
-                            new MXDataHandler(new MXMemoryStore(), credentials),
-                            credentials
-                    );
-                    txtStatus.setText("Matrix logged in");
-                }
+                new ApiCallback<Credentials>() {
+                    @Override
+                    public void onSuccess(Credentials credentials) {
+                        mMatrixSession = new MXSession(
+                                new MXDataHandler(new MXMemoryStore(), credentials),
+                                credentials
+                        );
+                        txtStatus.setText("Matrix logged in");
+                    }
 
-                @Override
-                public void onNetworkError(Exception e) {
-                    txtStatus.setText("Matrix login failed: " + e);
-                }
+                    @Override
+                    public void onNetworkError(Exception e) {
+                        txtStatus.setText("Matrix login failed: " + e);
+                    }
 
-                @Override
-                public void onMatrixError(MatrixError e) {
-                    txtStatus.setText("Matrix login failed: " + e);
-                }
+                    @Override
+                    public void onMatrixError(MatrixError e) {
+                        txtStatus.setText("Matrix login failed: " + e);
+                    }
 
-                @Override
-                public void onUnexpectedError(Exception e) {
-                    txtStatus.setText("Matrix login failed: " + e);
+                    @Override
+                    public void onUnexpectedError(Exception e) {
+                        txtStatus.setText("Matrix login failed: " + e);
+                    }
                 }
-            }
         );
     }
 
@@ -137,7 +137,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
     private static int intFromByte(byte b) {
-        if(b < 0)
+        if (b < 0)
             return 256 + b;
         else
             return b;
@@ -147,41 +147,41 @@ public class MainActivity extends ActionBarActivity {
         byte[] rawData;
         try {
             rawData = mPirate.i2cSendThenRecv(MPL311A5_ADDR, new byte[]{0x01}, 5);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             txtStatus.setText("Read failed: " + e);
             return;
         }
 
         double pressure =
                 ((intFromByte(rawData[0]) << 16) |
-                 (intFromByte(rawData[1]) <<  8) |
-                  intFromByte(rawData[2])        ) / 64.0;
+                        (intFromByte(rawData[1]) << 8) |
+                        intFromByte(rawData[2])) / 64.0;
         double temperature =
                 rawData[3] +
-                intFromByte(rawData[4]) / 256.0;
+                        intFromByte(rawData[4]) / 256.0;
 
-        ((TextView)findViewById(R.id.txtPressure)).setText(String.format("%.2f Pa", pressure));
-        ((TextView)findViewById(R.id.txtTemperature)).setText(String.format("%.3f C", temperature));
+        ((TextView) findViewById(R.id.txtPressure)).setText(String.format("%.2f Pa", pressure));
+        ((TextView) findViewById(R.id.txtTemperature)).setText(String.format("%.3f C", temperature));
 
         if (mMatrixSession != null) {
             Room room = mMatrixSession.getDataHandler().getRoom(ROOM_ID);
-            TextMessage message = new TextMessage();
-            message.body = String.format("Sensor reading: pressure=%.2f Pa, temperature=%.3f C",
-                    pressure, temperature);
 
-            room.sendMessage(message, new ApiCallback<Event>() {
+            room.sendMessage(new SensorDataMessage(pressure, temperature), new ApiCallback<Event>() {
                 @Override
-                public void onSuccess(Event info) { }
+                public void onSuccess(Event info) {
+                }
 
                 @Override
-                public void onNetworkError(Exception e) { }
+                public void onNetworkError(Exception e) {
+                }
 
                 @Override
-                public void onMatrixError(MatrixError e) { }
+                public void onMatrixError(MatrixError e) {
+                }
 
                 @Override
-                public void onUnexpectedError(Exception e) { }
+                public void onUnexpectedError(Exception e) {
+                }
             });
         }
     }
@@ -204,8 +204,7 @@ public class MainActivity extends ActionBarActivity {
             txtStatus.setText("Opening...");
             port.open(connection);
             port.setParameters(115200, 8, 1, 0);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             txtStatus.setText("Didn't open: " + e);
             return null;
         }
@@ -214,8 +213,7 @@ public class MainActivity extends ActionBarActivity {
             txtStatus.setText("Initialising Pirate...");
             return new BusPirate(port);
 
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             txtStatus.setText("Didn't like it: " + e);
             return null;
         }
@@ -241,5 +239,21 @@ public class MainActivity extends ActionBarActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private static class SensorDataMessage extends TextMessage {
+        public double pressure;
+        public double temperature;
+
+        public SensorDataMessage(double pressure_, double temperature_) {
+            super();
+            msgtype = "uk.org.leonerd.SensorData";
+
+            pressure = pressure_;
+            temperature = temperature_;
+
+            body = String.format("Sensor reading: pressure=%.2f Pa, temperature=%.3f C",
+                    pressure, temperature);
+        }
     }
 }
