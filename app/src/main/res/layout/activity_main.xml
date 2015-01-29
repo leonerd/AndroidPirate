@@ -12,17 +12,21 @@
         android:text="Bus Pirate"
         android:id="@+id/title"
         android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true" />
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginLeft="38dp"
+        android:layout_marginStart="38dp" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Read"
         android:id="@+id/btnRead"
-        android:layout_centerVertical="true"
-        android:layout_alignLeft="@+id/txtStatus"
-        android:layout_alignStart="@+id/txtStatus"
-        android:onClick="readSensor" />
+        android:onClick="readSensor"
+        android:layout_below="@+id/title"
+        android:layout_alignLeft="@+id/title"
+        android:layout_alignStart="@+id/title"
+        android:layout_marginTop="28dp" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -30,10 +34,10 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="[Status]"
         android:id="@+id/txtStatus"
-        android:layout_below="@+id/title"
-        android:layout_marginTop="28dp"
-        android:layout_alignLeft="@+id/title"
-        android:layout_alignStart="@+id/title" />
+        android:layout_marginBottom="28dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignLeft="@+id/btnLogin"
+        android:layout_alignStart="@+id/btnLogin" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -41,10 +45,10 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="[Pressure]"
         android:id="@+id/txtPressure"
+        android:layout_marginTop="17dp"
         android:layout_below="@+id/btnRead"
         android:layout_alignLeft="@+id/btnRead"
-        android:layout_alignStart="@+id/btnRead"
-        android:layout_marginTop="51dp" />
+        android:layout_alignStart="@+id/btnRead" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -52,8 +56,71 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="[Temperature]"
         android:id="@+id/txtTemperature"
+        android:layout_marginTop="18dp"
         android:layout_below="@+id/txtPressure"
         android:layout_alignLeft="@+id/txtPressure"
-        android:layout_alignStart="@+id/txtPressure"
+        android:layout_alignStart="@+id/txtPressure" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Matrix"
+        android:id="@+id/textView"
+        android:layout_centerVertical="true"
+        android:layout_alignLeft="@+id/txtTemperature"
+        android:layout_alignStart="@+id/txtTemperature" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Login:"
+        android:id="@+id/textView2"
+        android:layout_below="@+id/textView"
+        android:layout_alignLeft="@+id/textView"
+        android:layout_alignStart="@+id/textView"
         android:layout_marginTop="25dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Password:"
+        android:id="@+id/textView3"
+        android:layout_marginTop="20dp"
+        android:layout_below="@+id/textView2"
+        android:layout_alignLeft="@+id/textView2"
+        android:layout_alignStart="@+id/textView2" />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/editTextLogin"
+        android:layout_above="@+id/textView3"
+        android:layout_toRightOf="@+id/txtPressure"
+        android:inputType="text"
+        android:layout_alignRight="@+id/editTextPassword"
+        android:layout_alignEnd="@+id/editTextPassword" />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:inputType="textPassword"
+        android:ems="10"
+        android:id="@+id/editTextPassword"
+        android:layout_alignBottom="@+id/textView3"
+        android:layout_toRightOf="@+id/txtPressure"
+        android:layout_toEndOf="@+id/txtPressure" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Login"
+        android:id="@+id/btnLogin"
+        android:layout_marginTop="23dp"
+        android:layout_below="@+id/textView3"
+        android:layout_alignLeft="@+id/textView3"
+        android:layout_alignStart="@+id/textView3"
+        android:onClick="matrixLogin" />
 </RelativeLayout>

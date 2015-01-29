@@ -1,1 +1,2 @@
-include ':app', ':usbSerialForAndroid'
+include ':app', ':usbSerialForAndroid', ':sdk'
+project(':sdk').projectDir = new File('matrix-android-sdk/sdk')
