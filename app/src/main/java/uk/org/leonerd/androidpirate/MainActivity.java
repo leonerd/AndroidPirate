@@ -1,9 +1,15 @@
 package uk.org.leonerd.androidpirate;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.hardware.usb.UsbDeviceConnection;
-import android.hardware.usb.UsbManager;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -11,10 +17,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
-
-import com.hoho.android.usbserial.driver.UsbSerialDriver;
-import com.hoho.android.usbserial.driver.UsbSerialPort;
-import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import org.matrix.androidsdk.MXDataHandler;
 import org.matrix.androidsdk.MXSession;
@@ -27,21 +29,58 @@ import org.matrix.androidsdk.rest.model.MatrixError;
 import org.matrix.androidsdk.rest.model.TextMessage;
 import org.matrix.androidsdk.rest.model.login.Credentials;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 
 
 public class MainActivity extends ActionBarActivity {
-
-    private static final int MPL311A5_ADDR = 0x60;
 
     private static final Uri HS_URI = Uri.parse("https://matrix.org");
     // #test-bot:matrix.org
     private static final String ROOM_ID = "!ewOgZEUrOZAAaQJNBv:matrix.org";
 
+    private static final int MESSAGE_READ = 12;
+
     TextView txtStatus;
-    BusPirate mPirate;
 
     MXSession mMatrixSession;
+
+    BluetoothAdapter mBluetoothAdapter;
+    List<BluetoothDevice> mPossibleDevices = new LinkedList<BluetoothDevice>();
+
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+                Log.d("DISCOVER", "Device " + device.getName() + " found at index [" + mPossibleDevices.size() + "]");
+                mPossibleDevices.add(device);
+            }
+        }
+    };
+
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_READ:
+                    Log.d("CONNECT", "Received " + msg.arg1 + " bytes: " + Arrays.toString((byte[]) msg.obj));
+                    break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,43 +96,32 @@ public class MainActivity extends ActionBarActivity {
 
         txtStatus.setText("Starting");
 
-        mPirate = findBusPirate();
-        if (mPirate == null) {
-            txtStatus.setText("No pirate");
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (mBluetoothAdapter == null) {
+            Log.d("DISCOVER", "No bluetooth adapter");
             return;
         }
 
-        txtStatus.setText("Pirate ready");
-
-        try {
-            mPirate.enterI2CMode();
-            txtStatus.setText("Pirate I2C ready");
-        } catch (Exception e) {
-            txtStatus.setText("Pirate failed: " + e);
-            return;
+        if (!mBluetoothAdapter.isEnabled()) {
+            Log.d("DISCOVER", "Requesting enable bluetooth");
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, 1);
         }
 
-        try {
-            mPirate.setPower(true);
-        } catch (Exception e) {
-            txtStatus.setText("Power failed: " + e);
-            return;
-        }
+        Log.d("DISCOVER", "Starting bluetooth discovery...");
+        mPossibleDevices.clear();
 
-        try {
-            // CTRL_REG1 = ACTIVE
-            mPirate.i2cSend(MPL311A5_ADDR, new byte[]{0x26, 0x01});
-            txtStatus.setText("MPL311A5 ready");
-        } catch (Exception e) {
-            txtStatus.setText("MPL311A5 failed: " + e);
-            return;
-        }
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        registerReceiver(mReceiver, filter);
 
+        mBluetoothAdapter.startDiscovery();
     }
 
     public void matrixLogin(View view) {
-        String user = ((TextView) findViewById(R.id.editTextLogin)).getText().toString();
-        String password = ((TextView) findViewById(R.id.editTextPassword)).getText().toString();
+        //String user = ((TextView) findViewById(R.id.editTextLogin)).getText().toString();
+        //String password = ((TextView) findViewById(R.id.editTextPassword)).getText().toString();
+        String user = "test-leo";
+        String password = "dh02y&t8xp";
 
         mMatrixSession = null;
 
@@ -128,40 +156,55 @@ public class MainActivity extends ActionBarActivity {
 
     @Override
     protected void onStop() {
-        if (mPirate != null) {
-            mPirate.stop();
-            mPirate = null;
-        }
+        unregisterReceiver(mReceiver);
 
         super.onStop();
     }
 
-    private static int intFromByte(byte b) {
-        if (b < 0)
-            return 256 + b;
-        else
-            return b;
-    }
+    public void connectToEcu(View view) {
+        mBluetoothAdapter.cancelDiscovery();
 
-    public void readSensor(View view) {
-        byte[] rawData;
-        try {
-            rawData = mPirate.i2cSendThenRecv(MPL311A5_ADDR, new byte[]{0x01}, 5);
-        } catch (Exception e) {
-            txtStatus.setText("Read failed: " + e);
+        int index = Integer.parseInt(((TextView) findViewById(R.id.editTextIndex)).getText().toString());
+
+        if (index >= mPossibleDevices.size()) {
+            Log.d("CONNECT", "Index too large");
             return;
         }
 
-        double pressure =
-                ((intFromByte(rawData[0]) << 16) |
-                        (intFromByte(rawData[1]) << 8) |
-                        intFromByte(rawData[2])) / 64.0;
-        double temperature =
-                rawData[3] +
-                        intFromByte(rawData[4]) / 256.0;
+        BluetoothDevice device = mPossibleDevices.get(index);
+        Log.d("CONNECT", "Connecting to " + device);
 
-        ((TextView) findViewById(R.id.txtPressure)).setText(String.format("%.2f Pa", pressure));
-        ((TextView) findViewById(R.id.txtTemperature)).setText(String.format("%.3f C", temperature));
+        BluetoothSocket socket;
+        try {
+            // This method isn't exposed :(
+            Method m = device.getClass().getMethod("createRfcommSocket", Integer.TYPE);
+            socket = (BluetoothSocket) m.invoke(device, 1);
+
+            socket.connect();
+        } catch (IOException e) {
+            Log.w("CONNECT", "Connect failed: " + e);
+            return;
+        } catch (Exception e) {
+            Log.w("CONNECT", "Connect failed: " + e);
+            return;
+        }
+
+        Log.d("CONNECT", "Connected");
+
+        ConnectedThread thr;
+        try {
+            thr = new ConnectedThread(socket);
+            thr.start();
+        }
+        catch (IOException e) {
+            Log.w("CONNECT", "thread startup failed: " + e);
+            return;
+        }
+
+        thr.write(new byte[]{'A', 'T', 'Z', '\r', '\n'});
+
+        double pressure = 0;
+        double temperature = 0;
 
         if (mMatrixSession != null) {
             Room room = mMatrixSession.getDataHandler().getRoom(ROOM_ID);
@@ -183,39 +226,6 @@ public class MainActivity extends ActionBarActivity {
                 public void onUnexpectedError(Exception e) {
                 }
             });
-        }
-    }
-
-    private BusPirate findBusPirate() {
-        UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
-        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber()
-                .findAllDrivers(manager);
-
-        if (availableDrivers.isEmpty())
-            return null;
-
-        UsbSerialDriver driver = availableDrivers.get(0);
-        UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
-        if (connection == null)
-            return null;
-
-        UsbSerialPort port = driver.getPorts().get(0);
-        try {
-            txtStatus.setText("Opening...");
-            port.open(connection);
-            port.setParameters(115200, 8, 1, 0);
-        } catch (Exception e) {
-            txtStatus.setText("Didn't open: " + e);
-            return null;
-        }
-
-        try {
-            txtStatus.setText("Initialising Pirate...");
-            return new BusPirate(port);
-
-        } catch (Exception e) {
-            txtStatus.setText("Didn't like it: " + e);
-            return null;
         }
     }
 
@@ -254,6 +264,43 @@ public class MainActivity extends ActionBarActivity {
 
             body = String.format("Sensor reading: pressure=%.2f Pa, temperature=%.3f C",
                     pressure, temperature);
+        }
+    }
+
+    private class ConnectedThread extends Thread {
+        private final BluetoothSocket mSocket;
+        private final InputStream mInputStream;
+        private final OutputStream mOutputStream;
+
+        public ConnectedThread(BluetoothSocket socket) throws IOException {
+            mSocket = socket;
+            mInputStream = socket.getInputStream();
+            mOutputStream = socket.getOutputStream();
+        }
+
+        @Override
+        public void run() {
+            byte[] buffer = new byte[1024];
+            int bytes;
+
+            while(true) {
+                try {
+                    bytes = mInputStream.read(buffer);
+                    byte[] theseBytes = Arrays.copyOf(buffer, bytes);
+                    mHandler.obtainMessage(MESSAGE_READ, 0, 0, theseBytes)
+                            .sendToTarget();
+                }
+                catch (IOException e) {
+                    break;
+                }
+            }
+        }
+
+        public void write(byte[] bytes) {
+            try {
+                mOutputStream.write(bytes);
+            }
+            catch (IOException e) { }
         }
     }
 }
