@@ -7,15 +7,21 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.DataSetObserver;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import org.matrix.androidsdk.MXDataHandler;
@@ -29,17 +35,21 @@ import org.matrix.androidsdk.rest.model.MatrixError;
 import org.matrix.androidsdk.rest.model.TextMessage;
 import org.matrix.androidsdk.rest.model.login.Credentials;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.UUID;
+
+import pt.lighthouselabs.obd.commands.engine.EngineRPMObdCommand;
+import pt.lighthouselabs.obd.commands.protocol.EchoOffObdCommand;
+import pt.lighthouselabs.obd.commands.protocol.LineFeedOffObdCommand;
+import pt.lighthouselabs.obd.commands.protocol.SelectProtocolObdCommand;
+import pt.lighthouselabs.obd.commands.protocol.TimeoutObdCommand;
+import pt.lighthouselabs.obd.commands.temperature.AmbientAirTemperatureObdCommand;
+import pt.lighthouselabs.obd.enums.ObdProtocols;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -51,6 +61,7 @@ public class MainActivity extends ActionBarActivity {
     private static final int MESSAGE_READ = 12;
 
     TextView txtStatus;
+    ArrayAdapter mDeviceListAdapter;
 
     MXSession mMatrixSession;
 
@@ -67,6 +78,7 @@ public class MainActivity extends ActionBarActivity {
 
                 Log.d("DISCOVER", "Device " + device.getName() + " found at index [" + mPossibleDevices.size() + "]");
                 mPossibleDevices.add(device);
+                mDeviceListAdapter.notifyDataSetChanged();
             }
         }
     };
@@ -88,6 +100,27 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         txtStatus = (TextView) findViewById(R.id.txtStatus);
+
+        mDeviceListAdapter = new ArrayAdapter<BluetoothDevice>(this, R.layout.device_list_item,
+                R.id.txtDeviceName, mPossibleDevices) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                BluetoothDevice dev = mPossibleDevices.get(position);
+                TextView v = new TextView(MainActivity.this);
+                v.setText(dev.getName());
+                return v;
+            }
+        };
+
+        final ListView lstDevices = (ListView) findViewById(R.id.lstDevices);
+        lstDevices.setAdapter(mDeviceListAdapter);
+
+        lstDevices.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                connectToEcu((BluetoothDevice) lstDevices.getAdapter().getItem(position));
+            }
+        });
     }
 
     @Override
@@ -161,26 +194,23 @@ public class MainActivity extends ActionBarActivity {
         super.onStop();
     }
 
-    public void connectToEcu(View view) {
+    public void connectToEcu(BluetoothDevice device) {
         mBluetoothAdapter.cancelDiscovery();
 
-        int index = Integer.parseInt(((TextView) findViewById(R.id.editTextIndex)).getText().toString());
-
-        if (index >= mPossibleDevices.size()) {
-            Log.d("CONNECT", "Index too large");
-            return;
-        }
-
-        BluetoothDevice device = mPossibleDevices.get(index);
         Log.d("CONNECT", "Connecting to " + device);
 
         BluetoothSocket socket;
+        InputStream is;
+        OutputStream os;
         try {
             // This method isn't exposed :(
             Method m = device.getClass().getMethod("createRfcommSocket", Integer.TYPE);
             socket = (BluetoothSocket) m.invoke(device, 1);
 
             socket.connect();
+
+            is = socket.getInputStream();
+            os = socket.getOutputStream();
         } catch (IOException e) {
             Log.w("CONNECT", "Connect failed: " + e);
             return;
@@ -191,25 +221,30 @@ public class MainActivity extends ActionBarActivity {
 
         Log.d("CONNECT", "Connected");
 
-        ConnectedThread thr;
+        int rpm;
         try {
-            thr = new ConnectedThread(socket);
-            thr.start();
+            new EchoOffObdCommand().run(is, os);
+            new LineFeedOffObdCommand().run(is, os);
+            //new TimeoutObdCommand().run(is, os);
+            new SelectProtocolObdCommand(ObdProtocols.AUTO).run(is, os);
+
+            EngineRPMObdCommand cmd = new EngineRPMObdCommand();
+            cmd.run(is, os);
+
+            Log.i("OBD", "Engine RPM is " + cmd.getRPM());
+            rpm = cmd.getRPM();
         }
-        catch (IOException e) {
-            Log.w("CONNECT", "thread startup failed: " + e);
+        catch (Exception e) {
+            Log.d("OBD", "OBD command failed: " + e);
             return;
         }
 
-        thr.write(new byte[]{'A', 'T', 'Z', '\r', '\n'});
-
-        double pressure = 0;
-        double temperature = 0;
+        Log.d("OBD", "Managed to poll some stuff");
 
         if (mMatrixSession != null) {
             Room room = mMatrixSession.getDataHandler().getRoom(ROOM_ID);
 
-            room.sendMessage(new SensorDataMessage(pressure, temperature), new ApiCallback<Event>() {
+            room.sendMessage(new EngineDataMessage(rpm), new ApiCallback<Event>() {
                 @Override
                 public void onSuccess(Event info) {
                 }
@@ -251,19 +286,16 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private static class SensorDataMessage extends TextMessage {
-        public double pressure;
-        public double temperature;
+    private static class EngineDataMessage extends TextMessage {
+        public int rpm;
 
-        public SensorDataMessage(double pressure_, double temperature_) {
+        public EngineDataMessage(int rpm_) {
             super();
-            msgtype = "uk.org.leonerd.SensorData";
+            msgtype = "uk.org.leonerd.EngineData";
 
-            pressure = pressure_;
-            temperature = temperature_;
+            rpm = rpm_;
 
-            body = String.format("Sensor reading: pressure=%.2f Pa, temperature=%.3f C",
-                    pressure, temperature);
+            body = "Engine reading: rpm=" + rpm;
         }
     }
 

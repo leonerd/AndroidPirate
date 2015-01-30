@@ -91,6 +91,7 @@
     <orderEntry type="library" exported="" name="okio-1.0.0" level="project" />
     <orderEntry type="library" exported="" name="okhttp-2.0.0" level="project" />
     <orderEntry type="library" exported="" name="gson-2.3" level="project" />
+    <orderEntry type="library" exported="" name="obd-java-api-0.7" level="project" />
     <orderEntry type="module" module-name="sdk" exported="" />
   </component>
 </module>
