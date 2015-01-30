@@ -92,7 +92,6 @@
     <orderEntry type="library" exported="" name="okhttp-2.0.0" level="project" />
     <orderEntry type="library" exported="" name="gson-2.3" level="project" />
     <orderEntry type="module" module-name="sdk" exported="" />
-    <orderEntry type="module" module-name="usbSerialForAndroid" exported="" />
   </component>
 </module>
 
