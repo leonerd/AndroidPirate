@@ -7,11 +7,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.DataSetObserver;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -21,7 +18,6 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -40,7 +36,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -60,8 +55,6 @@ public class MainActivity extends ActionBarActivity {
     private static final Uri HS_URI = Uri.parse("https://matrix.org");
     // #test-bot:matrix.org
     private static final String ROOM_ID = "!ewOgZEUrOZAAaQJNBv:matrix.org";
-
-    private static final int MESSAGE_READ = 12;
 
     TextView txtStatus;
     ArrayAdapter mDeviceListAdapter;
@@ -156,8 +149,6 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void matrixLogin(View view) {
-        //String user = ((TextView) findViewById(R.id.editTextLogin)).getText().toString();
-        //String password = ((TextView) findViewById(R.id.editTextPassword)).getText().toString();
         String user = "test-leo";
         String password = "dh02y&t8xp";
 
