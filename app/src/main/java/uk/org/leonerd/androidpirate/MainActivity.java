@@ -44,12 +44,14 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import pt.lighthouselabs.obd.commands.engine.EngineLoadObdCommand;
 import pt.lighthouselabs.obd.commands.engine.EngineRPMObdCommand;
 import pt.lighthouselabs.obd.commands.protocol.EchoOffObdCommand;
 import pt.lighthouselabs.obd.commands.protocol.LineFeedOffObdCommand;
 import pt.lighthouselabs.obd.commands.protocol.SelectProtocolObdCommand;
 import pt.lighthouselabs.obd.commands.protocol.TimeoutObdCommand;
 import pt.lighthouselabs.obd.commands.temperature.AmbientAirTemperatureObdCommand;
+import pt.lighthouselabs.obd.commands.temperature.EngineCoolantTemperatureObdCommand;
 import pt.lighthouselabs.obd.enums.ObdProtocols;
 
 
@@ -244,18 +246,26 @@ public class MainActivity extends ActionBarActivity {
             return;
         }
 
-        int rpm;
+        EngineDataMessage message = new EngineDataMessage();
+
         try {
             new EchoOffObdCommand().run(is, os);
             new LineFeedOffObdCommand().run(is, os);
             //new TimeoutObdCommand().run(is, os);
             new SelectProtocolObdCommand(ObdProtocols.AUTO).run(is, os);
 
-            EngineRPMObdCommand cmd = new EngineRPMObdCommand();
-            cmd.run(is, os);
+            EngineRPMObdCommand cmdRpm = new EngineRPMObdCommand();
+            cmdRpm.run(is, os);
+            message.rpm = cmdRpm.getRPM();
+            Log.i("OBD", "Engine RPM is " + cmdRpm.getRPM());
 
-            Log.i("OBD", "Engine RPM is " + cmd.getRPM());
-            rpm = cmd.getRPM();
+            EngineLoadObdCommand cmdLoad = new EngineLoadObdCommand();
+            cmdLoad.run(is, os);
+            message.load = cmdLoad.getPercentage();
+
+            EngineCoolantTemperatureObdCommand cmdTemp = new EngineCoolantTemperatureObdCommand();
+            cmdTemp.run(is, os);
+            message.temperature = cmdTemp.getTemperature();
         }
         catch (Exception e) {
             Log.d("OBD", "OBD command failed: " + e);
@@ -267,7 +277,8 @@ public class MainActivity extends ActionBarActivity {
         if (mMatrixSession != null) {
             Room room = mMatrixSession.getDataHandler().getRoom(ROOM_ID);
 
-            room.sendMessage(new EngineDataMessage(rpm), new ApiCallback<Event>() {
+            message.fillBody();
+            room.sendMessage(message, new ApiCallback<Event>() {
                 @Override
                 public void onSuccess(Event info) {
                 }
@@ -311,14 +322,17 @@ public class MainActivity extends ActionBarActivity {
 
     private static class EngineDataMessage extends TextMessage {
         public int rpm;
+        public float load;
+        public float temperature;
 
-        public EngineDataMessage(int rpm_) {
+        public EngineDataMessage() {
             super();
             msgtype = "uk.org.leonerd.EngineData";
+        }
 
-            rpm = rpm_;
-
-            body = "Engine reading: rpm=" + rpm;
+        public void fillBody() {
+            body = String.format("Engine reading: rpm=%d load=%.1f%% temperature=%.1fC",
+                    rpm, load, temperature);
         }
     }
 
