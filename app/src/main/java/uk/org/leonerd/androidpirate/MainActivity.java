@@ -70,6 +70,8 @@ public class MainActivity extends ActionBarActivity {
 
     MXSession mMatrixSession;
 
+    PollingThread mPolling;
+
     BluetoothAdapter mBluetoothAdapter;
     List<BluetoothDevice> mPossibleDevices = new LinkedList<BluetoothDevice>();
 
@@ -84,17 +86,6 @@ public class MainActivity extends ActionBarActivity {
                 Log.d("DISCOVER", "Device " + device.getName() + " found at index [" + mPossibleDevices.size() + "]");
                 mPossibleDevices.add(device);
                 mDeviceListAdapter.notifyDataSetChanged();
-            }
-        }
-    };
-
-    private final Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MESSAGE_READ:
-                    Log.d("CONNECT", "Received " + msg.arg1 + " bytes: " + Arrays.toString((byte[]) msg.obj));
-                    break;
             }
         }
     };
@@ -205,6 +196,11 @@ public class MainActivity extends ActionBarActivity {
     protected void onStop() {
         unregisterReceiver(mReceiver);
 
+        if (mPolling != null) {
+            mPolling.cancel();
+            mPolling = null;
+        }
+
         super.onStop();
     }
 
@@ -231,7 +227,8 @@ public class MainActivity extends ActionBarActivity {
 
         ((Button) findViewById(R.id.btnRead)).setEnabled(true);
 
-        readSensor();
+        mPolling = new PollingThread();
+        mPolling.start();
     }
 
     public void readSensor()
@@ -336,40 +333,27 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-    private class ConnectedThread extends Thread {
-        private final BluetoothSocket mSocket;
-        private final InputStream mInputStream;
-        private final OutputStream mOutputStream;
+    private class PollingThread extends Thread {
 
-        public ConnectedThread(BluetoothSocket socket) throws IOException {
-            mSocket = socket;
-            mInputStream = socket.getInputStream();
-            mOutputStream = socket.getOutputStream();
-        }
+        private static final int SLEEP_MSEC = 5000;
+
+        private boolean mRunning = false;
 
         @Override
         public void run() {
-            byte[] buffer = new byte[1024];
-            int bytes;
+            mRunning = true;
 
-            while(true) {
+            while(mRunning) {
+                readSensor();
+
                 try {
-                    bytes = mInputStream.read(buffer);
-                    byte[] theseBytes = Arrays.copyOf(buffer, bytes);
-                    mHandler.obtainMessage(MESSAGE_READ, 0, 0, theseBytes)
-                            .sendToTarget();
-                }
-                catch (IOException e) {
-                    break;
-                }
+                    Thread.sleep(SLEEP_MSEC);
+                } catch (InterruptedException e) { }
             }
         }
 
-        public void write(byte[] bytes) {
-            try {
-                mOutputStream.write(bytes);
-            }
-            catch (IOException e) { }
+        public void cancel() {
+            mRunning = false;
         }
     }
 }
