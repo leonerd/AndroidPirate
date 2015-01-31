@@ -34,9 +34,10 @@
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Matrix"
         android:id="@+id/textView"
-        android:layout_centerVertical="true"
-        android:layout_alignLeft="@+id/title"
-        android:layout_alignStart="@+id/title" />
+        android:layout_below="@+id/title"
+        android:layout_alignLeft="@+id/editTextLogin"
+        android:layout_alignStart="@+id/editTextLogin"
+        android:layout_marginTop="136dp" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -95,6 +96,21 @@
         android:layout_height="wrap_content"
         android:id="@+id/lstDevices"
         android:layout_below="@+id/title"
-        android:layout_alignLeft="@+id/title" />
+        android:layout_toRightOf="@+id/textView2"
+        android:layout_toEndOf="@+id/textView2" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Read"
+        android:id="@+id/btnRead"
+        android:layout_alignTop="@+id/btnLogin"
+        android:layout_toRightOf="@+id/btnLogin"
+        android:layout_toEndOf="@+id/btnLogin"
+        android:layout_marginLeft="55dp"
+        android:layout_marginStart="55dp"
+        android:onClick="readSensor"
+        android:nestedScrollingEnabled="false"
+        android:enabled="false" />
 
 </RelativeLayout>

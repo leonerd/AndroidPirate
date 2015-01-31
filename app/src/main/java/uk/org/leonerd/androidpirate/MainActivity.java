@@ -20,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -62,6 +63,8 @@ public class MainActivity extends ActionBarActivity {
 
     TextView txtStatus;
     ArrayAdapter mDeviceListAdapter;
+
+    BluetoothSocket mSocket;
 
     MXSession mMatrixSession;
 
@@ -111,6 +114,15 @@ public class MainActivity extends ActionBarActivity {
                 return v;
             }
         };
+
+        ((Button) findViewById(R.id.btnRead)).setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        readSensor();
+                    }
+                }
+        );
 
         final ListView lstDevices = (ListView) findViewById(R.id.lstDevices);
         lstDevices.setAdapter(mDeviceListAdapter);
@@ -199,18 +211,12 @@ public class MainActivity extends ActionBarActivity {
 
         Log.d("CONNECT", "Connecting to " + device);
 
-        BluetoothSocket socket;
-        InputStream is;
-        OutputStream os;
         try {
             // This method isn't exposed :(
             Method m = device.getClass().getMethod("createRfcommSocket", Integer.TYPE);
-            socket = (BluetoothSocket) m.invoke(device, 1);
+            mSocket = (BluetoothSocket) m.invoke(device, 1);
 
-            socket.connect();
-
-            is = socket.getInputStream();
-            os = socket.getOutputStream();
+            mSocket.connect();
         } catch (IOException e) {
             Log.w("CONNECT", "Connect failed: " + e);
             return;
@@ -220,6 +226,23 @@ public class MainActivity extends ActionBarActivity {
         }
 
         Log.d("CONNECT", "Connected");
+
+        ((Button) findViewById(R.id.btnRead)).setEnabled(true);
+
+        readSensor();
+    }
+
+    public void readSensor()
+    {
+        InputStream is;
+        OutputStream os;
+        try {
+            is = mSocket.getInputStream();
+            os = mSocket.getOutputStream();
+        } catch (IOException e) {
+            Log.w("OBD", "Failed to get streams: " + e);
+            return;
+        }
 
         int rpm;
         try {
