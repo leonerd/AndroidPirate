@@ -70,4 +70,14 @@
         android:nestedScrollingEnabled="false"
         android:enabled="false" />
 
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:ems="10"
+        android:id="@+id/editTextProto"
+        android:layout_below="@+id/btnRead"
+        android:layout_toRightOf="@+id/btnLogin"
+        android:layout_toEndOf="@+id/btnLogin" />
+
 </RelativeLayout>

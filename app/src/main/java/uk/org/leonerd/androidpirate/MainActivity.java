@@ -18,6 +18,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -56,8 +57,23 @@ public class MainActivity extends ActionBarActivity {
     // #test-bot:matrix.org
     private static final String ROOM_ID = "!ewOgZEUrOZAAaQJNBv:matrix.org";
 
+    private static final ObdProtocols OBD_PROTO = ObdProtocols.AUTO;
+    private static final ObdProtocols[] OBD_ALL_PROTOS = {
+           ObdProtocols.SAE_J1850_PWM,
+            ObdProtocols.SAE_J1850_VPW,
+            ObdProtocols.ISO_9141_2,
+            ObdProtocols.ISO_14230_4_KWP,
+            ObdProtocols.ISO_14230_4_KWP_FAST,
+            ObdProtocols.ISO_15765_4_CAN,
+            ObdProtocols.ISO_15765_4_CAN_B,
+            ObdProtocols.ISO_15765_4_CAN_C,
+            ObdProtocols.ISO_15765_4_CAN_D,
+            ObdProtocols.SAE_J1939_CAN
+    };
+
     TextView txtStatus;
     ArrayAdapter mDeviceListAdapter;
+    EditText editTextProtocol;
 
     BluetoothSocket mSocket;
 
@@ -89,6 +105,7 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         txtStatus = (TextView) findViewById(R.id.txtStatus);
+        editTextProtocol = (EditText) findViewById(R.id.editTextProto);
 
         mDeviceListAdapter = new ArrayAdapter<BluetoothDevice>(this, R.layout.device_list_item,
                 R.id.txtDeviceName, mPossibleDevices) {
@@ -246,6 +263,18 @@ public class MainActivity extends ActionBarActivity {
 
         setStatus("Starting OBD query...");
 
+        int protoindex;
+        try {
+            protoindex = Integer.parseInt(editTextProtocol.getText().toString());
+        } catch (Exception e) {
+            setStatus("Cannot parseint: " + e);
+            return;
+        }
+        
+        if (protoindex < 0 || protoindex >= OBD_ALL_PROTOS.length) {
+            setStatus("Index out of range - 0 to " + (OBD_ALL_PROTOS.length - 1));
+        }
+
         try {
             new EchoOffObdCommand().run(is, os);
             setStatus("Echo is off");
@@ -253,7 +282,10 @@ public class MainActivity extends ActionBarActivity {
             new LineFeedOffObdCommand().run(is, os);
             setStatus("Linefeed is off");
 
-            new SelectProtocolObdCommand(ObdProtocols.AUTO).run(is, os);
+            new TimeoutObdCommand(250).run(is, os);
+            setStatus("Set timeout to 1000msec");
+
+            new SelectProtocolObdCommand(OBD_ALL_PROTOS[protoindex]).run(is, os);
             setStatus("Selected AUTO protocol");
 
             EngineRPMObdCommand cmdRpm = new EngineRPMObdCommand();
