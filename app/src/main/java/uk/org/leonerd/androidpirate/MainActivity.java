@@ -195,6 +195,14 @@ public class MainActivity extends ActionBarActivity {
         super.onStop();
     }
 
+    public void setStatus(final String msg) {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                txtStatus.setText(msg);
+            }
+        });
+    }
+
     public void connectToEcu(BluetoothDevice device) {
         mBluetoothAdapter.cancelDiscovery();
 
@@ -236,11 +244,17 @@ public class MainActivity extends ActionBarActivity {
 
         EngineDataMessage message = new EngineDataMessage();
 
+        setStatus("Starting OBD query...");
+
         try {
             new EchoOffObdCommand().run(is, os);
+            setStatus("Echo is off");
+
             new LineFeedOffObdCommand().run(is, os);
-            //new TimeoutObdCommand().run(is, os);
+            setStatus("Linefeed is off");
+
             new SelectProtocolObdCommand(ObdProtocols.AUTO).run(is, os);
+            setStatus("Selected AUTO protocol");
 
             EngineRPMObdCommand cmdRpm = new EngineRPMObdCommand();
             cmdRpm.run(is, os);
@@ -260,6 +274,7 @@ public class MainActivity extends ActionBarActivity {
             return;
         }
 
+        setStatus("OBD query successful");
         Log.d("OBD", "Managed to poll some stuff");
 
         if (mMatrixSession != null) {
