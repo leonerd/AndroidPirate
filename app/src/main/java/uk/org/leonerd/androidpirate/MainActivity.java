@@ -57,18 +57,17 @@ public class MainActivity extends ActionBarActivity {
     // #test-bot:matrix.org
     private static final String ROOM_ID = "!ewOgZEUrOZAAaQJNBv:matrix.org";
 
-    private static final ObdProtocols OBD_PROTO = ObdProtocols.AUTO;
     private static final ObdProtocols[] OBD_ALL_PROTOS = {
-           ObdProtocols.SAE_J1850_PWM,
-            ObdProtocols.SAE_J1850_VPW,
-            ObdProtocols.ISO_9141_2,
-            ObdProtocols.ISO_14230_4_KWP,
-            ObdProtocols.ISO_14230_4_KWP_FAST,
-            ObdProtocols.ISO_15765_4_CAN,
-            ObdProtocols.ISO_15765_4_CAN_B,
-            ObdProtocols.ISO_15765_4_CAN_C,
-            ObdProtocols.ISO_15765_4_CAN_D,
-            ObdProtocols.SAE_J1939_CAN
+           ObdProtocols.SAE_J1850_PWM,         // 0
+            ObdProtocols.SAE_J1850_VPW,        // 1
+            ObdProtocols.ISO_9141_2,           // 2
+            ObdProtocols.ISO_14230_4_KWP,      // 3
+            ObdProtocols.ISO_14230_4_KWP_FAST, // 4
+            ObdProtocols.ISO_15765_4_CAN,      // 5
+            ObdProtocols.ISO_15765_4_CAN_B,    // 6
+            ObdProtocols.ISO_15765_4_CAN_C,    // 7
+            ObdProtocols.ISO_15765_4_CAN_D,    // 8
+            ObdProtocols.SAE_J1939_CAN         // 9
     };
 
     TextView txtStatus;
@@ -270,7 +269,7 @@ public class MainActivity extends ActionBarActivity {
             setStatus("Cannot parseint: " + e);
             return;
         }
-        
+
         if (protoindex < 0 || protoindex >= OBD_ALL_PROTOS.length) {
             setStatus("Index out of range - 0 to " + (OBD_ALL_PROTOS.length - 1));
         }
